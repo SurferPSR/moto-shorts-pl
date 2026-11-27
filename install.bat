@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-echo Uruchamiam instalator...
-python moto.py install
-if errorlevel 1 (
+echo Instalacja Moto Shorts PL...
+python moto.py
+if errorlevel 9009 (
   echo.
-  echo Cos poszlo nie tak. Sprawdz, czy Python jest zainstalowany.
+  echo Nie widze Pythona. Zainstaluj go z python.org i uruchom ponownie.
 )
 echo.
 echo Nacisnij dowolny klawisz, aby zamknac...

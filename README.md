@@ -1,38 +1,47 @@
 # Moto Shorts PL
 
-Scenariusz JSON -> Short 9:16 (~1:20): polski lektor (edge-tts), wideo ze stocku lub własne, napisy po 3 słowa, opcjonalna muzyka, powiadomienie na Telegram.
+Jedna aplikacja: zamienia scenariusz na gotowy film Shorts 9:16 (~1:20) — polski lektor, wideo ze stocku albo własne, duże napisy po 3 słowa, opcjonalna muzyka, powiadomienie na Telegram.
 
-## Szybki start (Windows)
-1. Pobierz repo (Code -> Download ZIP) i rozpakuj.
-2. Uruchom `install.bat` (albo `python moto.py install`).
-3. Klucz Pixabay wklejasz **w tym samym oknie** — nic nie otwiera się samo.
-   Klucz: https://pixabay.com/api/docs/
-4. Na pulpicie pojawi się ikona **Moto Shorts** — klikaj ją, aby generować filmy.
+## Uruchomienie
+Podwójny klik na `moto.py` (albo `run.bat`, `install.bat` — wszystkie trzy robią to samo: otwierają menu).
 
-## Komendy
+Wymagania: Python 3.10+ oraz ffmpeg (`winget install Gyan.FFmpeg`). Program sam sprawdzi, czego brakuje.
+
+## Menu
 ```
-python moto.py install    # biblioteki + klucz + ikona
-python moto.py key        # wpisanie / zmiana klucza API
-python moto.py skrot      # sama ikona na pulpicie
-python moto.py            # generuj wszystkie brakujące Shorty
-python moto.py lista      # co gotowe, a co nie
-python make_short.py scripts/01_isle_of_man.json   # pojedynczy film
+1  Instalacja  (biblioteki + klucz + ikona)
+2  Ustaw klucz API
+3  Generuj filmy
+4  Lista scenariuszy
+5  Nowy scenariusz (kreator)
+6  Zrob skrot na pulpicie
+7  Pokaz folder z filmami
+0  Wyjscie
 ```
-Wynik w `output/`. Bez klucza w `.env` program powie, żeby go wpisać.
+Klucz API wpisujesz w oknie programu (bezpłatny: https://pixabay.com/api/docs/).
 
-## Własna ikona
-Wrzuć plik `icon.ico` do folderu projektu i uruchom `python moto.py skrot`.
-Bez niego skrót używa systemowej ikony motocykla z Windows.
+## Struktura folderu
+```
+moto.py          caly program (jeden plik)
+run.bat          uruchamia menu (Windows)
+install.bat      to samo, dla wygody
+icon.ico         ikona skrotu
+scripts/*.json   scenariusze
+output/*.mp4     gotowe filmy
+```
 
 ## Format scenariusza
 ```json
-{"title": "...", "music": "music/track.mp3",
+{"title": "Isle of Man TT", "voice": "pl-PL-MarekNeural",
+ "music": "music/track.mp3",
  "scenes": [{"text": "tekst lektora", "query": "motorcycle race"},
             {"text": "...", "file": "moje/klip.mp4"}]}
 ```
-`query` = wyszukiwanie w Pixabay (po angielsku), `file` = własne nagranie. Muzyka tylko z Biblioteki audio YouTube.
+- `query` — czego szukać w Pixabay (po angielsku),
+- `file` — własne nagranie zamiast stocku,
+- `music` — tylko z Biblioteki audio YouTube.
 
 ## Zasady
-- Bez nagrań MotoGP/WSBK/TV – Shorts >1 min z zastrzeżonymi treściami są blokowane.
-- W Pixabay nie używaj komercyjnie klipów z widocznym logo/brandem.
+- Bez nagrań MotoGP/WSBK/TV: Shorts dłuższe niż minuta z zastrzeżonymi treściami są blokowane.
+- W Pixabay nie używaj komercyjnie klipów z widocznym logo lub marką.
 - Fakty i liczby sprawdzaj przed publikacją.
