@@ -1,23 +1,18 @@
-"""Moto Shorts PL — jeden plik, który robi wszystko.
+"""Moto Shorts PL — instalacja, klucz API i skrót na pulpicie.
 
-Uruchomienie (podwójny klik też działa):
-    python moto.py            # instalacja przy pierwszym razie + generowanie filmów
-    python moto.py install    # tylko instalacja (biblioteki, .env, skrót na pulpicie)
-    python moto.py skrot      # tylko skrót na pulpicie
-    python moto.py lista      # co jest gotowe, a co nie
+Uruchomienie:
+    python moto.py install   # biblioteki + klucz + ikona na pulpicie
+    python moto.py key       # tylko wpisanie / zmiana klucza
+    python moto.py skrot     # tylko ikona na pulpicie
+    python moto.py           # generowanie filmow (bez pytan)
 
-Pierwsze uruchomienie:
- 1. sprawdza ffmpeg i biblioteki (instaluje, jeśli brak),
- 2. tworzy .env i otwiera go — wklej tam darmowy klucz PIXABAY_API_KEY,
- 3. zakłada na pulpicie ikonę "Moto Shorts" (skrót do tego pliku),
- 4. generuje wszystkie scenariusze z folderu scripts/.
+Klucz wpisujesz TU, w tym oknie — nic nie otwiera sie samo i nic nie zamyka.
 """
 import json
 import os
 import shutil
 import subprocess
 import sys
-import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -27,11 +22,29 @@ ENV = ROOT / ".env"
 VENV = ROOT / ".venv"
 PACKAGES = ["edge-tts", "requests", "python-dotenv"]
 
+DEFAULTS = {
+    "PIXABAY_API_KEY": "",
+    "PEXELS_API_KEY": "",
+    "VOICE": "pl-PL-MarekNeural",
+    "VOICE_RATE": "+8%",
+    "TELEGRAM_BOT_TOKEN": "",
+    "TELEGRAM_CHAT_ID": "798730878",
+}
+
 
 # --------------------------------------------------------------------------- #
 # pomocnicze
 # --------------------------------------------------------------------------- #
-def pause(msg="\nNaciśnij Enter, aby zamknąć..."):
+def ask(text, default=""):
+    """Pyta i NIE zamyka okna, gdy odpowiedz jest pusta."""
+    try:
+        value = input(text).strip()
+    except EOFError:
+        return default
+    return value or default
+
+
+def pause(msg="\nNacisnij Enter, aby zamknac to okno..."):
     try:
         input(msg)
     except EOFError:
@@ -42,54 +55,86 @@ def step(n, text):
     print(f"[{n}] {text}")
 
 
+def read_env():
+    vals = dict(DEFAULTS)
+    if ENV.exists():
+        for line in ENV.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if "=" in line and not line.startswith("#"):
+                k, _, v = line.partition("=")
+                vals[k.strip()] = v.strip()
+    return vals
+
+
+def write_env(vals):
+    order = ["PIXABAY_API_KEY", "PEXELS_API_KEY", "VOICE", "VOICE_RATE",
+             "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"]
+    lines = ["# Plik utworzony automatycznie przez moto.py",
+             "# Klucz wideo: https://pixabay.com/api/docs/", ""]
+    for k in order:
+        lines.append(f"{k}={vals.get(k, '')}")
+    for k in vals:
+        if k not in order:
+            lines.append(f"{k}={vals[k]}")
+    ENV.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def venv_python():
-    """Wolimy własne środowisko; gdy się nie uda, zostaje systemowy Python."""
-    if os.name == "nt":
-        exe = VENV / "Scripts" / "python.exe"
-    else:
-        exe = VENV / "bin" / "python"
+    exe = (VENV / "Scripts" / "python.exe") if os.name == "nt" \
+        else (VENV / "bin" / "python")
     return exe if exe.exists() else Path(sys.executable)
 
 
-def install():
-    """ffmpeg + biblioteki w .venv."""
+# --------------------------------------------------------------------------- #
+# instalacja
+# --------------------------------------------------------------------------- #
+def install_packages():
     step(1, "Sprawdzam ffmpeg...")
     if shutil.which("ffmpeg") is None:
         if os.name == "nt" and shutil.which("winget"):
-            print("   instaluje ffmpeg przez winget...")
+            print("   Probuje zainstalowac ffmpeg przez winget...")
             subprocess.run(["winget", "install", "-e", "--id", "Gyan.FFmpeg",
                             "--accept-package-agreements",
                             "--accept-source-agreements"], check=False)
-        if shutil.which("ffmpeg") is None:
-            print("   UWAGA: nie widzę ffmpeg. Zainstaluj go i uruchom ponownie:")
-            print("   winget install Gyan.FFmpeg")
-    else:
-        print("   OK, ffmpeg jest.")
+    print("   ffmpeg: " + ("OK" if shutil.which("ffmpeg") else
+                           "brak — zainstaluj: winget install Gyan.FFmpeg"))
 
-    step(2, "Przygotowuję biblioteki Pythona...")
+    step(2, "Biblioteki Pythona...")
     py = venv_python()
     if py == Path(sys.executable) and not VENV.exists():
-        if subprocess.run([sys.executable, "-m", "venv", str(VENV)]).returncode == 0:
-            py = venv_python()
+        subprocess.run([sys.executable, "-m", "venv", str(VENV)], check=False)
+        py = venv_python()
     subprocess.run([str(py), "-m", "pip", "install", "--upgrade", "pip"],
                    check=False, stdout=subprocess.DEVNULL)
-    if subprocess.run([str(py), "-m", "pip", "install", *PACKAGES]).returncode != 0:
-        print("   Nie udało się zainstalować bibliotek — sprawdź internet.")
-    else:
-        print(f"   OK ({py}).")
-
-    step(3, "Sprawdzam plik .env...")
-    if not ENV.exists():
-        ENV.write_text("PIXABAY_API_KEY=\nVOICE=pl-PL-MarekNeural\n"
-                       "VOICE_RATE=+8%\nTELEGRAM_BOT_TOKEN=\n"
-                       "TELEGRAM_CHAT_ID=798730878\n", encoding="utf-8")
-        print("   Utworzyłem .env — wklej klucz PIXABAY_API_KEY i zapisz.")
-        if os.name == "nt":
-            subprocess.Popen(["notepad.exe", str(ENV)])
-        webbrowser.open("https://pixabay.com/accounts/register/")
-    else:
-        print("   Plik .env już jest.")
+    r = subprocess.run([str(py), "-m", "pip", "install", *PACKAGES])
+    print("   " + ("OK" if r.returncode == 0 else "BLAD — sprawdz internet"))
     return py
+
+
+def ask_key(py=None):
+    """Wpisanie klucza w tym oknie. Zapisujemy od razu do .env."""
+    step(3, "Klucz do wideo (Pixabay)")
+    vals = read_env()
+    current = vals.get("PIXABAY_API_KEY", "")
+    if current:
+        print(f"   Klucz juz jest zapisany (konczy sie na ...{current[-4:]}).")
+        new = ask("   Enter = zostaw, albo wklej nowy klucz: ")
+    else:
+        print("   Otworz w przegladarce: https://pixabay.com/api/docs/")
+        print("   Zaloguj sie, skopiuj klucz i wklej go tutaj.")
+        print("   (W tym oknie: prawy przycisk myszy = wklej)")
+        new = ask("   Klucz PIXABAY_API_KEY: ")
+    if new:
+        vals["PIXABAY_API_KEY"] = new
+        write_env(vals)
+        print(f"   Zapisano do {ENV.name}.")
+    else:
+        if not current:
+            print("   Pusto — bez klucza nie sciagnie wideo ze stocku.")
+            print("   Uruchom pozniej: python moto.py key")
+        else:
+            print("   Zostawiam stary klucz.")
+    return vals.get("PIXABAY_API_KEY", "")
 
 
 def desktop():
@@ -101,35 +146,36 @@ def desktop():
 
 
 def make_shortcut():
-    """Skrót na pulpicie -> ten plik (okno konsoli zostaje otwarte)."""
     link = desktop() / "Moto Shorts.lnk"
     if os.name != "nt":
-        target = ROOT / ("moto.sh" if (ROOT / "moto.sh").exists() else "moto.py")
         link = desktop() / "Moto Shorts.desktop"
         link.write_text(
-            "[Desktop Entry]\nType=Application\n"
-            f"Name=Moto Shorts\nExec=python3 {target}\n"
-            f"Path={ROOT}\nTerminal=true\nIcon={ROOT}/icon.ico\n",
-            encoding="utf-8")
+            "[Desktop Entry]\nType=Application\nName=Moto Shorts\n"
+            f"Name[pl]=Moto Shorts\nExec=python3 {ROOT / 'moto.py'}\n"
+            f"Path={ROOT}\nTerminal=true\n", encoding="utf-8")
         link.chmod(0o755)
         return link
 
     icon = ROOT / "icon.ico"
-    icon_arg = f"$s.IconLocation = '{icon}'" if icon.exists() else \
-        "$s.IconLocation = 'C:\\Windows\\System32\\imageres.dll,101'"
+    icon_line = (f"$s.IconLocation = '{icon}'" if icon.exists()
+                 else "$s.IconLocation = 'C:\\Windows\\System32\\imageres.dll,101'")
     ps = f"""
 $s = (New-Object -ComObject WScript.Shell).CreateShortcut('{link}')
 $s.TargetPath = '{sys.executable}'
 $s.Arguments = '"{ROOT / "moto.py"}"'
 $s.WorkingDirectory = '{ROOT}'
-{icon_arg}
+{icon_line}
 $s.Description = 'Moto Shorts PL - generuj filmy'
 $s.Save()
+New-Item -ItemType File -Force -Path "{ROOT / 'shortcut_ok.txt'}" | Out-Null
 """
     r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
                        capture_output=True, text=True)
-    if r.returncode != 0:
-        print("   Skrótu nie udało się utworzyć:", (r.stderr or "").strip()[:200])
+    ok = (ROOT / "shortcut_ok.txt").exists()
+    if ok:
+        (ROOT / "shortcut_ok.txt").unlink()
+    if r.returncode != 0 or not ok:
+        print("   Skrotu nie udalo sie utworzyc:", (r.stderr or "").strip()[:200])
         return None
     return link
 
@@ -138,13 +184,7 @@ $s.Save()
 # generowanie
 # --------------------------------------------------------------------------- #
 def env_values():
-    vals = {}
-    if ENV.exists():
-        for line in ENV.read_text(encoding="utf-8").splitlines():
-            if "=" in line and not line.strip().startswith("#"):
-                k, _, v = line.partition("=")
-                vals[k.strip()] = v.strip()
-    return vals
+    return read_env()
 
 
 def notify(text):
@@ -160,17 +200,35 @@ def notify(text):
         pass
 
 
+def open_folder():
+    try:
+        if os.name == "nt":
+            subprocess.Popen(["explorer", str(OUTPUT)])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(OUTPUT)])
+        else:
+            subprocess.Popen(["xdg-open", str(OUTPUT)])
+    except OSError:
+        pass
+
+
 def build_all(py):
-    """Odpala make_short.py na każdym scenariuszu, który nie ma jeszcze wyniku."""
     maker = ROOT / "make_short.py"
+    if not maker.exists():
+        print("Brak make_short.py w tym folderze.")
+        return 1
     jobs = sorted(SCRIPTS.glob("*.json")) if SCRIPTS.is_dir() else []
     if not jobs:
         print("Folder scripts/ jest pusty — dodaj scenariusze .json.")
         return 1
+    if not env_values().get("PIXABAY_API_KEY") and not env_values().get("PEXELS_API_KEY"):
+        print("Brak klucza API. Wpisz go: python moto.py key")
+        return 1
+
     OUTPUT.mkdir(exist_ok=True)
     todo = [j for j in jobs if not (OUTPUT / f"{j.stem}.mp4").exists()]
     if not todo:
-        print(f"Wszystkie {len(jobs)} filmów już jest w output/.")
+        print(f"Wszystkie {len(jobs)} filmow jest juz w output/.")
         open_folder()
         return 0
 
@@ -185,7 +243,7 @@ def build_all(py):
             ok.append(job.stem)
         else:
             bad.append(job.stem)
-            print("BŁĄD:")
+            print("BLAD:")
             print((r.stderr or "")[-1500:])
 
     print("\n=== Podsumowanie ===")
@@ -195,18 +253,6 @@ def build_all(py):
         notify(f"Shorty gotowe: {len(ok)} ({', '.join(ok[:5])})")
         open_folder()
     return 0 if not bad else 1
-
-
-def open_folder():
-    try:
-        if os.name == "nt":
-            subprocess.Popen(["explorer", str(OUTPUT)])
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", str(OUTPUT)])
-        else:
-            subprocess.Popen(["xdg-open", str(OUTPUT)])
-    except OSError:
-        pass
 
 
 def show_list():
@@ -232,20 +278,23 @@ def main():
 
     py = venv_python()
     if cmd in ("run", "install"):
-        py = install()
+        py = install_packages()
+    if cmd == "key":
+        ask_key()
+        pause()
+        return 0
     if cmd in ("install", "skrot"):
-        step(4, "Skrót na pulpicie...")
+        ask_key()
+        step(4, "Ikona na pulpicie...")
         link = make_shortcut()
-        print(f"   {'Ikona gotowa: ' + str(link) if link else 'Nie udało się.'}")
+        print("   " + (f"Gotowe: {link}" if link else "Nie udalo sie."))
         if cmd == "install":
-            print("\nKlikaj teraz ikonę „Moto Shorts” na pulpicie.")
+            print("\nKlikaj ikone „Moto Shorts” na pulpicie, aby generowac filmy.")
             pause()
             return 0
 
     code = build_all(py)
     pause()
-    if os.name == "nt" and sys.stdout.isatty():
-        pass  # okno zostaje otwarte, żeby dało się przeczytać podsumowanie
     return code
 
 

@@ -4,21 +4,25 @@ Scenariusz JSON -> Short 9:16 (~1:20): polski lektor (edge-tts), wideo ze stocku
 
 ## Szybki start (Windows)
 1. Pobierz repo (Code -> Download ZIP) i rozpakuj.
-2. `python moto.py install` — instaluje biblioteki, tworzy `.env`, zakłada ikonę na pulpicie.
-3. Wklej darmowy klucz z https://pixabay.com/api/docs/ do `.env` (`PIXABAY_API_KEY`).
-4. Kliknij ikonę **Moto Shorts** na pulpicie (albo `python moto.py`).
+2. Uruchom `install.bat` (albo `python moto.py install`).
+3. Klucz Pixabay wklejasz **w tym samym oknie** — nic nie otwiera się samo.
+   Klucz: https://pixabay.com/api/docs/
+4. Na pulpicie pojawi się ikona **Moto Shorts** — klikaj ją, aby generować filmy.
 
-Bez Pythona? Uruchom `install.bat`, a potem `run.bat`.
-
-## Użycie
+## Komendy
 ```
+python moto.py install    # biblioteki + klucz + ikona
+python moto.py key        # wpisanie / zmiana klucza API
+python moto.py skrot      # sama ikona na pulpicie
 python moto.py            # generuj wszystkie brakujące Shorty
-python moto.py install    # tylko instalacja + skrót
-python moto.py skrot      # tylko skrót na pulpicie
 python moto.py lista      # co gotowe, a co nie
 python make_short.py scripts/01_isle_of_man.json   # pojedynczy film
 ```
-Wynik w `output/`.
+Wynik w `output/`. Bez klucza w `.env` program powie, żeby go wpisać.
+
+## Własna ikona
+Wrzuć plik `icon.ico` do folderu projektu i uruchom `python moto.py skrot`.
+Bez niego skrót używa systemowej ikony motocykla z Windows.
 
 ## Format scenariusza
 ```json
