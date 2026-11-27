@@ -1,9 +1,14 @@
 """Moto Shorts PL — scenariusz JSON -> gotowy Short 9:16 (MP4).
 
+Wideo: Pixabay (domyślnie) albo Pexels, jeśli masz klucz.
 Użycie:  python make_short.py scripts/01_isle_of_man.json
 Wynik:   output/<nazwa>.mp4
+
+Uwaga: Pixabay wymaga cache 24h i nie pozwala na masowe pobierania.
+Pobrane klipy trzymamy w work/_cache, więc drugi przebieg nie pyta API drugi raz.
 """
 import asyncio
+import hashlib
 import json
 import os
 import random
@@ -16,12 +21,17 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv()
+PIXABAY_KEY = os.getenv("PIXABAY_API_KEY", "")
 PEXELS_KEY = os.getenv("PEXELS_API_KEY", "")
 VOICE = os.getenv("VOICE", "pl-PL-MarekNeural")
 RATE = os.getenv("VOICE_RATE", "+8%")
 TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TG_CHAT = os.getenv("TELEGRAM_CHAT_ID", "")
 W, H = 1080, 1920
+CACHE = Path("work") / "_cache"
+
+# Pixabay nie ma filtra orientacji — te słowa pomagają dostać kadr pionowy.
+VERTICAL_HINTS = "vertical portrait"
 
 
 def run(cmd):
@@ -57,26 +67,68 @@ async def tts(text, mp3):
     return words
 
 
-def pexels_clip(query, dest, min_dur):
-    if not PEXELS_KEY:
-        raise SystemExit("Brak PEXELS_API_KEY w pliku .env")
+def download(url, dest):
+    with requests.get(url, stream=True, timeout=90) as resp:
+        resp.raise_for_status()
+        with open(dest, "wb") as f:
+            for part in resp.iter_content(1 << 20):
+                f.write(part)
+
+
+def pexels_clip(query, dest):
     r = requests.get(
         "https://api.pexels.com/videos/search",
         headers={"Authorization": PEXELS_KEY},
         params={"query": query, "orientation": "portrait", "per_page": 15},
         timeout=30)
     r.raise_for_status()
-    videos = [v for v in r.json().get("videos", []) if v["duration"] >= min_dur] \
-        or r.json().get("videos", [])
+    videos = r.json().get("videos", [])
     if not videos:
         raise SystemExit(f"Pexels: brak wideo dla '{query}'")
-    video = random.choice(videos[:8])
-    files = sorted(video["video_files"], key=lambda f: abs((f.get("height") or 0) - H))
-    with requests.get(files[0]["link"], stream=True, timeout=60) as resp:
-        resp.raise_for_status()
-        with open(dest, "wb") as f:
-            for part in resp.iter_content(1 << 20):
-                f.write(part)
+    files = sorted(random.choice(videos[:8])["video_files"],
+                   key=lambda f: abs((f.get("height") or 0) - H))
+    download(files[0]["link"], dest)
+
+
+def pixabay_clip(query, dest):
+    """Pixabay zwraca 'videos' z kilkoma rozdzielczościami na wynik."""
+    cache = CACHE / f"{hashlib.md5(query.encode()).hexdigest()}.json"
+    if cache.exists():
+        hits = json.loads(cache.read_text(encoding="utf-8"))
+    else:
+        r = requests.get(
+            "https://pixabay.com/api/videos/",
+            params={"key": PIXABAY_KEY, "q": f"{query} {VERTICAL_HINTS}",
+                    "per_page": 20, "safesearch": "true"},
+            timeout=30)
+        r.raise_for_status()
+        hits = r.json().get("hits", [])
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(hits), encoding="utf-8")  # cache 24h+
+        if not hits:  # druga próba bez podpowiedzi o kadrze
+            r = requests.get(
+                "https://pixabay.com/api/videos/",
+                params={"key": PIXABAY_KEY, "q": query, "per_page": 20,
+                        "safesearch": "true"},
+                timeout=30)
+            r.raise_for_status()
+            hits = r.json().get("hits", [])
+    if not hits:
+        raise SystemExit(f"Pixabay: brak wideo dla '{query}'")
+    hit = random.choice(hits[:10])
+    variants = hit["videos"]
+    pick = variants.get("large") or variants.get("medium") or variants.get("small")
+    download(pick["url"], dest)
+
+
+def get_clip(query, dest):
+    """Pixabay, a gdy brak klucza — Pexels."""
+    if PIXABAY_KEY:
+        pixabay_clip(query, dest)
+    elif PEXELS_KEY:
+        pexels_clip(query, dest)
+    else:
+        raise SystemExit("Brak klucza: wpisz PIXABAY_API_KEY (albo PEXELS_API_KEY) w .env")
 
 
 def scene_clip(src, dst, dur):
@@ -121,10 +173,10 @@ def build(script_path):
         d = duration(mp3) + 0.15
         all_words += [(a + t0, b + t0, w) for a, b, w in words]
         raw, clip = work / f"raw{i}.mp4", work / f"v{i}.mp4"
-        if sc.get("file"):  # własny plik zamiast Pexels
+        if sc.get("file"):  # własny plik zamiast stocku
             raw = Path(sc["file"])
         elif not raw.exists():
-            pexels_clip(sc["query"], raw, d)
+            get_clip(sc["query"], raw)
         scene_clip(raw, clip, d)
         clips.append(clip)
         audios.append((mp3, d))

@@ -1,12 +1,14 @@
 # Moto Shorts PL
 
-Scenariusz JSON -> Short 9:16 (~1:20): polski lektor (edge-tts), wideo z Pexels lub własne, napisy po 3 słowa, opcjonalna muzyka, powiadomienie na Telegram.
+Scenariusz JSON -> Short 9:16 (~1:20): polski lektor (edge-tts), wideo ze stocku lub własne, napisy po 3 słowa, opcjonalna muzyka, powiadomienie na Telegram.
 
 ## Instalacja (Windows)
-1. Python 3.11+ z python.org (zaznacz "Add to PATH").
-2. ffmpeg: `winget install Gyan.FFmpeg` (potem nowe okno terminala, sprawdź `ffmpeg -version`).
-3. `pip install -r requirements.txt`
-4. Darmowy klucz: https://www.pexels.com/api/ -> wpisz do `.env` (skopiuj z `.env.example`).
+1. Pobierz repo (Code -> Download ZIP) i rozpakuj.
+2. Skopiuj `install.bat` i `run.bat` do tego folderu.
+3. Uruchom `install.bat` (instaluje Python, ffmpeg, biblioteki).
+4. Darmowy klucz wideo: https://pixabay.com/accounts/register/ , potem https://pixabay.com/api/docs/ -> wklej do `.env` jako `PIXABAY_API_KEY`.
+   (Pexels wstrzymał wydawanie nowych kluczy — nie jest potrzebny.)
+5. Uruchom `run.bat`.
 
 ## Użycie
 ```
@@ -21,8 +23,9 @@ Wynik w `output/`.
  "scenes": [{"text": "tekst lektora", "query": "motorcycle race"},
             {"text": "...", "file": "moje/klip.mp4"}]}
 ```
-`query` = wyszukiwanie w Pexels (po angielsku), `file` = własne nagranie. Muzyka tylko z Biblioteki audio YouTube.
+`query` = wyszukiwanie w Pixabay (po angielsku), `file` = własne nagranie. Muzyka tylko z Biblioteki audio YouTube.
 
 ## Zasady
 - Bez nagrań MotoGP/WSBK/TV – Shorts >1 min z zastrzeżonymi treściami są blokowane.
+- W Pixabay nie używaj komercyjnie klipów z widocznym logo/brandem.
 - Fakty i liczby sprawdzaj przed publikacją.
