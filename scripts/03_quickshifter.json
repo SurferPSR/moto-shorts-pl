@@ -1,0 +1,8 @@
+{"title": "Jak działa quickshifter?",
+ "scenes": [
+  {"text": "Zmiana biegu bez sprzęgła i bez puszczania gazu. Brzmi jak magia? To quickshifter.", "query": "motorcycle gear shift"},
+  {"text": "Normalnie przy zmianie biegu w górę wciskasz sprzęgło i na chwilę odejmujesz gaz. To zabiera czas i wybija motocykl z rytmu.", "query": "motorcycle rider city"},
+  {"text": "Quickshifter ma czujnik na dźwigni zmiany biegów. Gdy go naciśniesz, elektronika na ułamek sekundy przerywa zapłon.", "query": "motorcycle engine detail"},
+  {"text": "Skrzynia zostaje odciążona, bieg wskakuje sam, a zapłon wraca. Wszystko trwa krócej niż mrugnięcie okiem.", "query": "sport motorcycle acceleration"},
+  {"text": "Efekt? Szybsze przyspieszanie i ten charakterystyczny strzał z wydechu. Masz quickshifter w swoim motocyklu? Daj znać w komentarzu.", "query": "motorcycle exhaust"}
+ ]}
